@@ -6,6 +6,12 @@ cd compose
 docker compose --env-file .env.dev up --build
 ```
 
+Reset and Rebuild
+```sh
+docker compose down -v
+docker compose --env-file .env.dev up --build
+```
+
 Visit the backend health check:  
 👉 http://localhost:8000/health
 
