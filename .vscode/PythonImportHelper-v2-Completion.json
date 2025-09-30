@@ -9,6 +9,32 @@
         "documentation": {}
     },
     {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "pytest",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "pytest",
+        "description": "pytest",
+        "detail": "pytest",
+        "documentation": {}
+    },
+    {
+        "label": "create_app",
+        "importPath": "app",
+        "description": "app",
+        "isExtraImport": true,
+        "detail": "app",
+        "documentation": {}
+    },
+    {
         "label": "jsonify",
         "importPath": "flask",
         "description": "flask",
@@ -48,6 +74,42 @@
         "importPath": "psycopg",
         "description": "psycopg",
         "detail": "psycopg",
+        "documentation": {}
+    },
+    {
+        "label": "client",
+        "kind": 2,
+        "importPath": "app.tests.test_health",
+        "description": "app.tests.test_health",
+        "peekOfCode": "def client():\n    app = create_app()\n    app.config.update(TESTING=True)\n    with app.test_client() as client:\n        yield client\ndef test_health(client):\n    rv = client.get('/api/health')\n    assert rv.status_code == 200\n    data = rv.get_json()\n    assert isinstance(data, dict)",
+        "detail": "app.tests.test_health",
+        "documentation": {}
+    },
+    {
+        "label": "test_health",
+        "kind": 2,
+        "importPath": "app.tests.test_health",
+        "description": "app.tests.test_health",
+        "peekOfCode": "def test_health(client):\n    rv = client.get('/api/health')\n    assert rv.status_code == 200\n    data = rv.get_json()\n    assert isinstance(data, dict)\n    assert data.get('ok') is True\n@pytest.mark.integration\ndef test_ping_redis_integration(client):\n    # This test will pass if Redis is reachable (dev compose up), otherwise it gets skipped\n    if not os.environ.get(\"REDIS_URL\"):",
+        "detail": "app.tests.test_health",
+        "documentation": {}
+    },
+    {
+        "label": "test_ping_redis_integration",
+        "kind": 2,
+        "importPath": "app.tests.test_health",
+        "description": "app.tests.test_health",
+        "peekOfCode": "def test_ping_redis_integration(client):\n    # This test will pass if Redis is reachable (dev compose up), otherwise it gets skipped\n    if not os.environ.get(\"REDIS_URL\"):\n        pytest.skip(\"REDIS_URL not set; skipping integration test\")\n    rv = client.get('/api/ping-redis')\n    assert rv.status_code == 200\n    data = rv.get_json()\n    assert 'redis' in data\n@pytest.mark.integration\ndef test_db_version_integration(client):",
+        "detail": "app.tests.test_health",
+        "documentation": {}
+    },
+    {
+        "label": "test_db_version_integration",
+        "kind": 2,
+        "importPath": "app.tests.test_health",
+        "description": "app.tests.test_health",
+        "peekOfCode": "def test_db_version_integration(client):\n    if not os.environ.get(\"DATABASE_URL\") and not os.environ.get(\"POSTGRES_USER\"):\n        pytest.skip(\"DB env not set; skipping integration test\")\n    rv = client.get('/api/db-version')\n    assert rv.status_code == 200\n    data = rv.get_json()\n    assert 'postgres_version' in data or 'error' in data",
+        "detail": "app.tests.test_health",
         "documentation": {}
     },
     {
