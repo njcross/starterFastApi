@@ -1,39 +1,42 @@
 # 🚀 Quickstart (Local Development)
 
-This project has both a **Flask backend** and a **React + TypeScript frontend** running via Docker Compose.  
-You can also run the frontend directly with Node for faster local iteration.
+### Backend (Flask + Redis + Postgres)
+```sh
+cd compose
+docker compose --env-file .env.dev up --build
+```
+
+Visit the backend health check:  
+👉 http://localhost:8000/health
+
+### Frontend (Vite + React + TypeScript)
+```sh
+cd frontend
+npm install          # or npm ci
+npm run dev          # starts Vite dev server
+```
+
+Visit the frontend app:  
+👉 http://localhost:5173
+
+> ⚡ If running inside Docker Compose, the `frontend` container also serves at `http://localhost:5173`.
+
+Ensure `package.json` has the right scripts:
+```json
+"scripts": {
+  "dev": "vite --host --port 5173",
+  "build": "vite build",
+  "preview": "vite preview",
+  "test": "vitest",
+  "test:ci": "vitest run --coverage"
+}
+```
 
 ---
 
-## 🖥️ macOS Setup
+# 🐳 Windows Docker Setup
 
-1. **Install Docker Desktop (Mac)**
-   - Download from https://www.docker.com/products/docker-desktop/
-   - Ensure it’s running and set to **Linux containers** (default).
-
-2. **Start services**
-   ```sh
-   cd compose
-   docker compose --env-file .env.dev up --build
-   ```
-
-3. **Access the apps**
-   - Backend: [http://localhost:8000/health](http://localhost:8000/health)
-   - Frontend: [http://localhost:5173](http://localhost:5173)
-
-4. **Optional: run frontend outside Docker**
-   ```sh
-   cd frontend
-   npm install
-   npm run dev
-   ```
-   > Faster for hot reloading. Still proxies `/api` → backend in Docker.
-
----
-
-## 🐳 Windows Setup
-
-If Docker Desktop errors out, follow these steps:
+If Docker isn’t running or errors occur, use these steps:
 
 1. **Start Docker Desktop service**
    ```powershell
@@ -45,104 +48,167 @@ If Docker Desktop errors out, follow these steps:
    & "C:\Program Files\Docker\Docker\Docker Desktop.exe"
    ```
 
-3. **Verify daemon is running**
+3. **Verify daemon**
    ```powershell
    docker info
    docker version
    docker context ls
    ```
+   Should show `desktop-linux` or `default`.
 
 4. **Switch to Linux containers**
-   - Right-click the whale → *Switch to Linux containers…*
+   - Right-click the Docker whale → *Switch to Linux containers…*
 
-5. **WSL 2 setup (if needed)**
+5. **WSL setup (if needed)**
    ```powershell
    wsl --install
    wsl --set-default-version 2
-   wsl -l -v   # confirm VERSION = 2
+   wsl -l -v   # confirm distro is running (e.g. Ubuntu, VERSION 2)
    ```
-   Then enable WSL integration in Docker Desktop settings.
+   Enable distro in Docker Desktop → Settings → Resources → WSL Integration.
 
-6. **Run Compose**
+6. **Test images**
    ```powershell
-   cd compose
-   docker compose --env-file .env.dev up --build
+   docker pull hello-world
+   docker run --rm hello-world
+   docker pull redis:7
    ```
 
-7. **Access the apps**
-   - Backend: [http://localhost:8000/health](http://localhost:8000/health)
-   - Frontend: [http://localhost:5173](http://localhost:5173)
+---
+
+# 🍎 Mac Docker Setup
+
+1. Install **Docker Desktop for Mac** (Apple Silicon or Intel version).  
+   👉 https://docs.docker.com/desktop/install/mac/
+
+2. Start Docker Desktop from Applications.
+
+3. Verify installation:
+   ```sh
+   docker info
+   docker version
+   ```
+
+4. Run a test container:
+   ```sh
+   docker run --rm hello-world
+   docker pull redis:7
+   ```
 
 ---
 
-## 📦 Frontend Scripts
+# 🧪 Running Tests
 
-Make sure `package.json` includes:
+## Backend (Flask + Pytest)
 
-```json
-"scripts": {
-  "dev": "vite --host --port 5173",
-  "build": "vite build",
-  "preview": "vite preview"
-}
+All backend tests should be run inside your virtual environment (`.venv`).
+
+### 1. Activate the venv
+
+**Windows (PowerShell):**
+```powershell
+.venv\Scripts\activate
+```
+
+**Mac/Linux (bash/zsh):**
+```sh
+source .venv/bin/activate
+```
+
+### 2. Run unit tests with coverage (skipping integration tests)
+```sh
+pytest --cov=app --cov-report=term-missing -m "not integration"
+```
+
+- `--cov=app` → measures coverage on the backend app code  
+- `--cov-report=term-missing` → shows which lines are untested  
+- `-m "not integration"` → skips tests marked as `@pytest.mark.integration`  
+
+### 3. Run **all tests** (including integration)
+```sh
+pytest --cov=app --cov-report=term-missing
 ```
 
 ---
 
-## ☁️ Build & Push to AWS ECR
+## Frontend (Vite + Vitest)
 
-### Backend
+Install dependencies if not already:
 ```sh
-docker build -f docker/web.Dockerfile \
-  -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev .
+cd frontend
+npm install
+```
+
+Run the test suite:
+
+```sh
+# normal test run
+npm run test
+
+# CI-style run with coverage
+npm run test:ci
+```
+
+If coverage fails, install the plugin:
+```sh
+npm install -D @vitest/coverage-v8
+```
+
+---
+
+# ☁️ Build & Push to AWS ECR
+
+Both **backend** and **frontend** images can be built and pushed:
+
+```sh
+# backend
+docker build -f docker/web.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev .
 docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev
-```
 
-### Frontend
-```sh
-docker build -f docker/frontend.dev.Dockerfile \
-  -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev .
+# frontend
+docker build -f docker/frontend.dev.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev .
 docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev
 ```
 
-Or use `make` if available:
+Or use `make` targets if defined:
 ```sh
 make docker-build docker-push
 ```
 
 ---
 
-## 🚢 Deploy to AWS EKS
+# 🚢 Deploy to AWS EKS
 
-Once your EKS cluster and IAM role are ready:
+After EKS and IAM are set up:
 
 ```sh
 kubectl apply -k k8s/overlays/dev
 ```
 
-- Backend available at `/api/*`
-- Frontend served at `/` through ALB Ingress
+This applies both `web` and `frontend` Deployments/Services/Ingress.
+
+- Backend is exposed at `/api/*`
+- Frontend is served at `/` through the ALB Ingress
 
 ---
 
-## 🔄 GitHub Actions CI/CD
+# 🔄 GitHub Actions CI/CD
 
-Configure in **GitHub → Settings → Secrets and variables**:
+In **GitHub → Settings → Secrets and variables**:
 
 ### Variables
 - `AWS_REGION`
 - `AWS_ACCOUNT_ID`
-- `ECR_REPOSITORY_WEB` (e.g. `yourapp-web`)
-- `ECR_REPOSITORY_FRONTEND` (e.g. `yourapp-frontend`)
+- `ECR_REPOSITORY_WEB` (e.g., `yourapp-web`)
+- `ECR_REPOSITORY_FRONTEND` (e.g., `yourapp-frontend`)
 - `EKS_CLUSTER_NAME`
-- `K8S_NAMESPACE`
+- `K8S_NAMESPACE` (e.g., `yourapp`)
 
 ### Secrets
 - `AWS_ROLE_TO_ASSUME` (IAM role with OIDC trust)
 
-Workflow will:
-- Build Docker images (**web** + **frontend**)
+The CI/CD workflow will:
+- Build Docker images for **web** and **frontend**
 - Push to ECR
-- Patch k8s manifests with ECR URIs
-- Apply via `kubectl -k`
-
+- Patch the Kubernetes manifests (`REPLACEME_ECR_URI` placeholders)
+- Deploy via `kubectl apply -k k8s/overlays/dev`
