@@ -114,7 +114,7 @@ All backend tests should be run inside your virtual environment (`.venv`).
 ```sh
 source .venv/bin/activate
 ```
-
+pip install -r app/requirements-dev.txt
 ### 2. Run unit tests with coverage (skipping integration tests)
 ```sh
 pytest --cov=app --cov-report=term-missing -m "not integration"

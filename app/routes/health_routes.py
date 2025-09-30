@@ -1,17 +1,20 @@
 import os
-from flask import jsonify, current_app, Blueprint
+from flask import jsonify, Blueprint
 import redis
-import psycopg
+import psycopg2
 
-bp = Blueprint("api", __name__)
+bp = Blueprint("health", __name__)
 
 def get_redis():
     url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     return redis.Redis.from_url(url, decode_responses=True)
 
 def get_db_conn():
-    dsn = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/appdb")
-    return psycopg.connect(dsn, autocommit=True)
+    # default to Docker service name in compose
+    dsn = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@db:5432/appdb")
+    conn = psycopg2.connect(dsn)
+    conn.autocommit = True   # psycopg2 sets autocommit on the connection, not via connect()
+    return conn
 
 @bp.get("/health")
 def health():
@@ -32,8 +35,5 @@ def db_version():
                 row = cur.fetchone()
                 return jsonify({"postgres_version": row[0]})
     except Exception as e:
+        # helpful in dev
         return jsonify({"error": str(e)}), 500
-
-def register_routes(app):
-    app.register_blueprint(bp, url_prefix="/api")
-

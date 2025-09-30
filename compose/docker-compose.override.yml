@@ -1,0 +1,10 @@
+# docker-compose.override.yml
+services:
+  web:
+    volumes:
+      # keep live-reload code mount
+      - ../app:/app:cached
+      # mount gunicorn config to a path NOT under /app, so it won't be shadowed
+      - ../docker/gunicorn_conf.py:/etc/gunicorn/gunicorn_conf.py:ro
+    command: >
+      sh -c "gunicorn app.wsgi:app -c /etc/gunicorn/gunicorn_conf.py --reload --reload-engine=poll"
