@@ -146,6 +146,3 @@ Workflow will:
 - Patch k8s manifests with ECR URIs
 - Apply via `kubectl -k`
 
----
-
-✅ Now your README walks through **local dev (Mac & Windows)** → **Dockerized builds** → **AWS ECR/EKS deployment** → **CI/CD**.
