@@ -5,7 +5,7 @@
 ```bash
 cd compose
 docker compose --env-file .env.dev up --build
-# visit: http://localhost:8000/health
+# visit: http://localhost:5173/
 ```
 ## on windows if docker isnt running or errors occur use these steps
 1) Start the Docker Linux engine
