@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yourapp-config
+  namespace: yourapp
+data:
+  ENV: "k8s"
+  REDIS_URL: "redis://redis:6379/0"

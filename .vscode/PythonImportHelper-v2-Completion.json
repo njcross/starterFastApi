@@ -1,0 +1,179 @@
+[
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "jsonify",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "current_app",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "Blueprint",
+        "importPath": "flask",
+        "description": "flask",
+        "isExtraImport": true,
+        "detail": "flask",
+        "documentation": {}
+    },
+    {
+        "label": "redis",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "redis",
+        "description": "redis",
+        "detail": "redis",
+        "documentation": {}
+    },
+    {
+        "label": "psycopg",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "psycopg",
+        "description": "psycopg",
+        "detail": "psycopg",
+        "documentation": {}
+    },
+    {
+        "label": "get_redis",
+        "kind": 2,
+        "importPath": "app.routes",
+        "description": "app.routes",
+        "peekOfCode": "def get_redis():\n    url = os.environ.get(\"REDIS_URL\", \"redis://localhost:6379/0\")\n    return redis.Redis.from_url(url, decode_responses=True)\ndef get_db_conn():\n    dsn = os.environ.get(\"DATABASE_URL\", \"postgresql://postgres:postgres@localhost:5432/appdb\")\n    return psycopg.connect(dsn, autocommit=True)\n@bp.get(\"/health\")\ndef health():\n    return jsonify({\"ok\": True})\n@bp.get(\"/ping-redis\")",
+        "detail": "app.routes",
+        "documentation": {}
+    },
+    {
+        "label": "get_db_conn",
+        "kind": 2,
+        "importPath": "app.routes",
+        "description": "app.routes",
+        "peekOfCode": "def get_db_conn():\n    dsn = os.environ.get(\"DATABASE_URL\", \"postgresql://postgres:postgres@localhost:5432/appdb\")\n    return psycopg.connect(dsn, autocommit=True)\n@bp.get(\"/health\")\ndef health():\n    return jsonify({\"ok\": True})\n@bp.get(\"/ping-redis\")\ndef ping_redis():\n    r = get_redis()\n    r.set(\"hello\", \"world\", ex=30)",
+        "detail": "app.routes",
+        "documentation": {}
+    },
+    {
+        "label": "health",
+        "kind": 2,
+        "importPath": "app.routes",
+        "description": "app.routes",
+        "peekOfCode": "def health():\n    return jsonify({\"ok\": True})\n@bp.get(\"/ping-redis\")\ndef ping_redis():\n    r = get_redis()\n    r.set(\"hello\", \"world\", ex=30)\n    return jsonify({\"redis\": r.get(\"hello\")})\n@bp.get(\"/db-version\")\ndef db_version():\n    try:",
+        "detail": "app.routes",
+        "documentation": {}
+    },
+    {
+        "label": "ping_redis",
+        "kind": 2,
+        "importPath": "app.routes",
+        "description": "app.routes",
+        "peekOfCode": "def ping_redis():\n    r = get_redis()\n    r.set(\"hello\", \"world\", ex=30)\n    return jsonify({\"redis\": r.get(\"hello\")})\n@bp.get(\"/db-version\")\ndef db_version():\n    try:\n        with get_db_conn() as conn:\n            with conn.cursor() as cur:\n                cur.execute(\"SELECT version()\")",
+        "detail": "app.routes",
+        "documentation": {}
+    },
+    {
+        "label": "db_version",
+        "kind": 2,
+        "importPath": "app.routes",
+        "description": "app.routes",
+        "peekOfCode": "def db_version():\n    try:\n        with get_db_conn() as conn:\n            with conn.cursor() as cur:\n                cur.execute(\"SELECT version()\")\n                row = cur.fetchone()\n                return jsonify({\"postgres_version\": row[0]})\n    except Exception as e:\n        return jsonify({\"error\": str(e)}), 500\ndef register_routes(app):",
+        "detail": "app.routes",
+        "documentation": {}
+    },
+    {
+        "label": "register_routes",
+        "kind": 2,
+        "importPath": "app.routes",
+        "description": "app.routes",
+        "peekOfCode": "def register_routes(app):\n    app.register_blueprint(bp, url_prefix=\"/api\")",
+        "detail": "app.routes",
+        "documentation": {}
+    },
+    {
+        "label": "bp",
+        "kind": 5,
+        "importPath": "app.routes",
+        "description": "app.routes",
+        "peekOfCode": "bp = Blueprint(\"api\", __name__)\ndef get_redis():\n    url = os.environ.get(\"REDIS_URL\", \"redis://localhost:6379/0\")\n    return redis.Redis.from_url(url, decode_responses=True)\ndef get_db_conn():\n    dsn = os.environ.get(\"DATABASE_URL\", \"postgresql://postgres:postgres@localhost:5432/appdb\")\n    return psycopg.connect(dsn, autocommit=True)\n@bp.get(\"/health\")\ndef health():\n    return jsonify({\"ok\": True})",
+        "detail": "app.routes",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "app.wsgi",
+        "description": "app.wsgi",
+        "peekOfCode": "app = create_app()\nif __name__ == \"__main__\":\n    app.run(host=\"0.0.0.0\", port=8000)",
+        "detail": "app.wsgi",
+        "documentation": {}
+    },
+    {
+        "label": "bind",
+        "kind": 5,
+        "importPath": "docker.gunicorn_conf",
+        "description": "docker.gunicorn_conf",
+        "peekOfCode": "bind = \"0.0.0.0:8000\"\nworkers = 2\nworker_class = \"sync\"\ntimeout = 60\ngraceful_timeout = 30\nloglevel = \"info\"",
+        "detail": "docker.gunicorn_conf",
+        "documentation": {}
+    },
+    {
+        "label": "workers",
+        "kind": 5,
+        "importPath": "docker.gunicorn_conf",
+        "description": "docker.gunicorn_conf",
+        "peekOfCode": "workers = 2\nworker_class = \"sync\"\ntimeout = 60\ngraceful_timeout = 30\nloglevel = \"info\"",
+        "detail": "docker.gunicorn_conf",
+        "documentation": {}
+    },
+    {
+        "label": "worker_class",
+        "kind": 5,
+        "importPath": "docker.gunicorn_conf",
+        "description": "docker.gunicorn_conf",
+        "peekOfCode": "worker_class = \"sync\"\ntimeout = 60\ngraceful_timeout = 30\nloglevel = \"info\"",
+        "detail": "docker.gunicorn_conf",
+        "documentation": {}
+    },
+    {
+        "label": "timeout",
+        "kind": 5,
+        "importPath": "docker.gunicorn_conf",
+        "description": "docker.gunicorn_conf",
+        "peekOfCode": "timeout = 60\ngraceful_timeout = 30\nloglevel = \"info\"",
+        "detail": "docker.gunicorn_conf",
+        "documentation": {}
+    },
+    {
+        "label": "graceful_timeout",
+        "kind": 5,
+        "importPath": "docker.gunicorn_conf",
+        "description": "docker.gunicorn_conf",
+        "peekOfCode": "graceful_timeout = 30\nloglevel = \"info\"",
+        "detail": "docker.gunicorn_conf",
+        "documentation": {}
+    },
+    {
+        "label": "loglevel",
+        "kind": 5,
+        "importPath": "docker.gunicorn_conf",
+        "description": "docker.gunicorn_conf",
+        "peekOfCode": "loglevel = \"info\"",
+        "detail": "docker.gunicorn_conf",
+        "documentation": {}
+    }
+]

@@ -1,0 +1,16 @@
+resources:
+  - ../../base
+  - ../../base/ingress.yaml
+configMapGenerator:
+  - name: yourapp-config
+    behavior: merge
+    literals:
+      - ENV=staging
+patches:
+  - target:
+      kind: Deployment
+      name: web
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: 123456789012.dkr.ecr.us-west-2.amazonaws.com/yourapp-web:staging
