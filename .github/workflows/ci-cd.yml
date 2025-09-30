@@ -1,148 +1,148 @@
-name: CI-CD to EKS (web)
+# name: CI-CD to EKS (web)
 
-on:
-  push:
-    branches: [ "main" ]
-    tags: [ "staging-*", "v*" ]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Environment to deploy (dev|staging|prod)"
-        required: true
-        default: "dev"
-      ref:
-        description: "Git ref to build (branch, tag, or SHA)"
-        required: false
+# on:
+#   push:
+#     branches: [ "main" ]
+#     tags: [ "staging-*", "v*" ]
+#   workflow_dispatch:
+#     inputs:
+#       environment:
+#         description: "Environment to deploy (dev|staging|prod)"
+#         required: true
+#         default: "dev"
+#       ref:
+#         description: "Git ref to build (branch, tag, or SHA)"
+#         required: false
 
-permissions:
-  id-token: write
-  contents: read
+# permissions:
+#   id-token: write
+#   contents: read
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
-  K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+# env:
+#   AWS_REGION: ${{ vars.AWS_REGION }}cd .
+#   AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+#   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+#   EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+#   K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
 
-jobs:
-  plan:
-    runs-on: ubuntu-latest
-    outputs:
-      env: ${{ steps.pick.outputs.env }}
-      tag: ${{ steps.pick.outputs.tag }}
-      image: ${{ steps.pick.outputs.image }}
-    steps:
-      - name: Pick environment + tag
-        id: pick
-        run: |
-          REF="${{ github.ref }}"
-          INPUT_ENV="${{ github.event.inputs.environment }}"
-          SHORT_SHA="$(echo "${{ github.sha }}" | cut -c1-7)"   # <-- fixed
+# jobs:
+#   plan:
+#     runs-on: ubuntu-latest
+#     outputs:
+#       env: ${{ steps.pick.outputs.env }}
+#       tag: ${{ steps.pick.outputs.tag }}
+#       image: ${{ steps.pick.outputs.image }}
+#     steps:
+#       - name: Pick environment + tag
+#         id: pick
+#         run: |
+#           REF="${{ github.ref }}"
+#           INPUT_ENV="${{ github.event.inputs.environment }}"
+#           SHORT_SHA="$(echo "${{ github.sha }}" | cut -c1-7)"   # <-- fixed
 
-          if [[ -n "$INPUT_ENV" ]]; then
-            ENV="$INPUT_ENV"
-          elif [[ "$REF" == refs/heads/main ]]; then
-            ENV="dev"
-          elif [[ "$REF" == refs/tags/staging-* ]]; then
-            ENV="staging"
-          elif [[ "$REF" == refs/tags/v* ]]; then
-            ENV="prod"
-          else
-            ENV="dev"
-          fi
+#           if [[ -n "$INPUT_ENV" ]]; then
+#             ENV="$INPUT_ENV"
+#           elif [[ "$REF" == refs/heads/main ]]; then
+#             ENV="dev"
+#           elif [[ "$REF" == refs/tags/staging-* ]]; then
+#             ENV="staging"
+#           elif [[ "$REF" == refs/tags/v* ]]; then
+#             ENV="prod"
+#           else
+#             ENV="dev"
+#           fi
 
-          if [[ "$ENV" == "prod" && "$REF" == refs/tags/v* ]]; then
-            TAG="${REF##refs/tags/}"
-          else
-            TAG="${ENV}-${SHORT_SHA}"
-          fi
+#           if [[ "$ENV" == "prod" && "$REF" == refs/tags/v* ]]; then
+#             TAG="${REF##refs/tags/}"
+#           else
+#             TAG="${ENV}-${SHORT_SHA}"
+#           fi
 
-          IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${TAG}"
+#           IMAGE="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${TAG}"
 
-          echo "env=$ENV"        >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG"        >> "$GITHUB_OUTPUT"
-          echo "image=$IMAGE"    >> "$GITHUB_OUTPUT"
-          echo "ENV=$ENV TAG=$TAG IMAGE=$IMAGE"
+#           echo "env=$ENV"        >> "$GITHUB_OUTPUT"
+#           echo "tag=$TAG"        >> "$GITHUB_OUTPUT"
+#           echo "image=$IMAGE"    >> "$GITHUB_OUTPUT"
+#           echo "ENV=$ENV TAG=$TAG IMAGE=$IMAGE"
 
-  build_and_push:
-    runs-on: ubuntu-latest
-    needs: [plan]
-    environment: ${{ needs.plan.outputs.env }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+#   build_and_push:
+#     runs-on: ubuntu-latest
+#     needs: [plan]
+#     environment: ${{ needs.plan.outputs.env }}
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           ref: ${{ github.event.inputs.ref || github.ref }}
 
-      - name: Configure AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-oidc-build
+#       - name: Configure AWS (OIDC)
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-region: ${{ env.AWS_REGION }}
+#           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+#           role-session-name: gha-oidc-build
 
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+#       - name: Login to Amazon ECR
+#         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Ensure ECR repo exists
-        run: |
-          aws ecr describe-repositories --repository-names "${{ env.ECR_REPOSITORY }}" >/dev/null 2>&1 || \
-          aws ecr create-repository --repository-name "${{ env.ECR_REPOSITORY }}"
+#       - name: Ensure ECR repo exists
+#         run: |
+#           aws ecr describe-repositories --repository-names "${{ env.ECR_REPOSITORY }}" >/dev/null 2>&1 || \
+#           aws ecr create-repository --repository-name "${{ env.ECR_REPOSITORY }}"
 
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}
-          tags: |
-            type=raw,value=${{ needs.plan.outputs.tag }}
-            type=sha
+#       - name: Docker metadata
+#         id: meta
+#         uses: docker/metadata-action@v5
+#         with:
+#           images: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}
+#           tags: |
+#             type=raw,value=${{ needs.plan.outputs.tag }}
+#             type=sha
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/web.Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+#       - name: Build and push
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: .
+#           file: docker/web.Dockerfile
+#           push: true
+#           tags: ${{ steps.meta.outputs.tags }}
+#           labels: ${{ steps.meta.outputs.labels }}
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: [plan, build_and_push]
-    environment: ${{ needs.plan.outputs.env }}
-    steps:
-      - uses: actions/checkout@v4
+#   deploy:
+#     runs-on: ubuntu-latest
+#     needs: [plan, build_and_push]
+#     environment: ${{ needs.plan.outputs.env }}
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Configure AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-oidc-deploy
+#       - name: Configure AWS (OIDC)
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-region: ${{ env.AWS_REGION }}
+#           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+#           role-session-name: gha-oidc-deploy
 
-      - name: Update kubeconfig for EKS
-        run: |
-          aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
+#       - name: Update kubeconfig for EKS
+#         run: |
+#           aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
 
-      - name: Ensure namespace
-        run: |
-          kubectl get ns "${{ env.K8S_NAMESPACE }}" || kubectl create ns "${{ env.K8S_NAMESPACE }}"
+#       - name: Ensure namespace
+#         run: |
+#           kubectl get ns "${{ env.K8S_NAMESPACE }}" || kubectl create ns "${{ env.K8S_NAMESPACE }}"
 
-      - name: Kustomize apply with image injection
-        env:
-          ENV_NAME: ${{ needs.plan.outputs.env }}
-          IMAGE_URI: ${{ needs.plan.outputs.image }}
-          NS: ${{ env.K8S_NAMESPACE }}
-        run: |
-          OVERLAY="k8s/overlays/${ENV_NAME}"
-          test -d "$OVERLAY" || { echo "Overlay $OVERLAY not found"; exit 1; }
-          # use kubectl kustomize (no separate install)
-          kubectl kustomize "$OVERLAY" \
-          | sed "s|REPLACEME_ECR_URI|$IMAGE_URI|g" \
-          | kubectl -n "$NS" apply -f -
+#       - name: Kustomize apply with image injection
+#         env:
+#           ENV_NAME: ${{ needs.plan.outputs.env }}
+#           IMAGE_URI: ${{ needs.plan.outputs.image }}
+#           NS: ${{ env.K8S_NAMESPACE }}
+#         run: |
+#           OVERLAY="k8s/overlays/${ENV_NAME}"
+#           test -d "$OVERLAY" || { echo "Overlay $OVERLAY not found"; exit 1; }
+#           # use kubectl kustomize (no separate install)
+#           kubectl kustomize "$OVERLAY" \
+#           | sed "s|REPLACEME_ECR_URI|$IMAGE_URI|g" \
+#           | kubectl -n "$NS" apply -f -
 
-      - name: Rollout status
-        run: |
-          kubectl -n "${{ env.K8S_NAMESPACE }}" rollout status deploy/web --timeout=180s
-          kubectl -n "${{ env.K8S_NAMESPACE }}" get svc,ingress,deploy,po -o wide
+#       - name: Rollout status
+#         run: |
+#           kubectl -n "${{ env.K8S_NAMESPACE }}" rollout status deploy/web --timeout=180s
+#           kubectl -n "${{ env.K8S_NAMESPACE }}" get svc,ingress,deploy,po -o wide
