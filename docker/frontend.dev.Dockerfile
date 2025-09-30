@@ -1,15 +1,14 @@
-
 FROM node:22-alpine
 WORKDIR /app
 
-# Ensure dev deps install during build
+# Always install dev deps in this image
 ENV NODE_ENV=development
 
-# Install dependencies
+# Install deps
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci || npm install --include=dev
 
-# Copy source
+# Copy only the parts we need at build (so node_modules is baked into image)
 COPY frontend ./
 
 EXPOSE 5173
