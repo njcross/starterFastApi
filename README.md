@@ -1,40 +1,39 @@
 # 🚀 Quickstart (Local Development)
 
-### Backend (Flask + Redis + Postgres)
-```sh
-cd compose
-docker compose --env-file .env.dev up --build
-```
-
-Visit the backend health check:  
-👉 http://localhost:8000/health
-
-### Frontend (Vite + React + TypeScript)
-```sh
-cd frontend
-npm install          # or npm ci
-npm run dev          # starts Vite dev server
-```
-
-Visit the frontend app:  
-👉 http://localhost:5173
-
-> ⚡ If running inside Docker Compose, the `frontend` container also serves at `http://localhost:5173`.
-
-Ensure `package.json` has the right scripts:
-```json
-"scripts": {
-  "dev": "vite --host --port 5173",
-  "build": "vite build",
-  "preview": "vite preview"
-}
-```
+This project has both a **Flask backend** and a **React + TypeScript frontend** running via Docker Compose.  
+You can also run the frontend directly with Node for faster local iteration.
 
 ---
 
-# 🐳 Windows Docker Setup
+## 🖥️ macOS Setup
 
-If Docker isn’t running or errors occur, use these steps:
+1. **Install Docker Desktop (Mac)**
+   - Download from https://www.docker.com/products/docker-desktop/
+   - Ensure it’s running and set to **Linux containers** (default).
+
+2. **Start services**
+   ```sh
+   cd compose
+   docker compose --env-file .env.dev up --build
+   ```
+
+3. **Access the apps**
+   - Backend: [http://localhost:8000/health](http://localhost:8000/health)
+   - Frontend: [http://localhost:5173](http://localhost:5173)
+
+4. **Optional: run frontend outside Docker**
+   ```sh
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   > Faster for hot reloading. Still proxies `/api` → backend in Docker.
+
+---
+
+## 🐳 Windows Setup
+
+If Docker Desktop errors out, follow these steps:
 
 1. **Start Docker Desktop service**
    ```powershell
@@ -46,91 +45,107 @@ If Docker isn’t running or errors occur, use these steps:
    & "C:\Program Files\Docker\Docker\Docker Desktop.exe"
    ```
 
-3. **Verify daemon**
+3. **Verify daemon is running**
    ```powershell
    docker info
    docker version
    docker context ls
    ```
-   Should show `desktop-linux` or `default`.
 
 4. **Switch to Linux containers**
-   - Right-click the Docker whale → *Switch to Linux containers…*
+   - Right-click the whale → *Switch to Linux containers…*
 
-5. **WSL setup (if needed)**
+5. **WSL 2 setup (if needed)**
    ```powershell
    wsl --install
    wsl --set-default-version 2
-   wsl -l -v   # confirm distro is running (e.g. Ubuntu, VERSION 2)
+   wsl -l -v   # confirm VERSION = 2
    ```
-   Enable distro in Docker Desktop → Settings → Resources → WSL Integration.
+   Then enable WSL integration in Docker Desktop settings.
 
-6. **Test images**
+6. **Run Compose**
    ```powershell
-   docker pull hello-world
-   docker run --rm hello-world
-   docker pull redis:7
+   cd compose
+   docker compose --env-file .env.dev up --build
    ```
+
+7. **Access the apps**
+   - Backend: [http://localhost:8000/health](http://localhost:8000/health)
+   - Frontend: [http://localhost:5173](http://localhost:5173)
 
 ---
 
-# ☁️ Build & Push to AWS ECR
+## 📦 Frontend Scripts
 
-Both **backend** and **frontend** images can be built and pushed:
+Make sure `package.json` includes:
 
+```json
+"scripts": {
+  "dev": "vite --host --port 5173",
+  "build": "vite build",
+  "preview": "vite preview"
+}
+```
+
+---
+
+## ☁️ Build & Push to AWS ECR
+
+### Backend
 ```sh
-# backend
-docker build -f docker/web.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev .
+docker build -f docker/web.Dockerfile \
+  -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev .
 docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev
+```
 
-# frontend
-docker build -f docker/frontend.dev.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev .
+### Frontend
+```sh
+docker build -f docker/frontend.dev.Dockerfile \
+  -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev .
 docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev
 ```
 
-Or use `make` targets if defined:
+Or use `make` if available:
 ```sh
 make docker-build docker-push
 ```
 
 ---
 
-# 🚢 Deploy to AWS EKS
+## 🚢 Deploy to AWS EKS
 
-After EKS and IAM are set up:
+Once your EKS cluster and IAM role are ready:
 
 ```sh
 kubectl apply -k k8s/overlays/dev
 ```
 
-This applies both `web` and `frontend` Deployments/Services/Ingress.
-
-- Backend is exposed at `/api/*`
-- Frontend is served at `/` through the ALB Ingress
+- Backend available at `/api/*`
+- Frontend served at `/` through ALB Ingress
 
 ---
 
-# 🔄 GitHub Actions CI/CD
+## 🔄 GitHub Actions CI/CD
 
-In **GitHub → Settings → Secrets and variables**:
+Configure in **GitHub → Settings → Secrets and variables**:
 
 ### Variables
 - `AWS_REGION`
 - `AWS_ACCOUNT_ID`
-- `ECR_REPOSITORY_WEB` (e.g., `yourapp-web`)
-- `ECR_REPOSITORY_FRONTEND` (e.g., `yourapp-frontend`)
+- `ECR_REPOSITORY_WEB` (e.g. `yourapp-web`)
+- `ECR_REPOSITORY_FRONTEND` (e.g. `yourapp-frontend`)
 - `EKS_CLUSTER_NAME`
-- `K8S_NAMESPACE` (e.g., `yourapp`)
+- `K8S_NAMESPACE`
 
 ### Secrets
 - `AWS_ROLE_TO_ASSUME` (IAM role with OIDC trust)
 
-The CI/CD workflow will:
-- Build Docker images for **web** and **frontend**
+Workflow will:
+- Build Docker images (**web** + **frontend**)
 - Push to ECR
-- Patch the Kubernetes manifests (`REPLACEME_ECR_URI` placeholders)
-- Deploy via `kubectl apply -k k8s/overlays/dev`
+- Patch k8s manifests with ECR URIs
+- Apply via `kubectl -k`
 
 ---
 
-⚡ That way your README covers **local dev → Docker → AWS ECR/EKS → CI/CD** for both parts of the app.
+✅ Now your README walks through **local dev (Mac & Windows)** → **Dockerized builds** → **AWS ECR/EKS deployment** → **CI/CD**.
