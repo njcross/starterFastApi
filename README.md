@@ -1,45 +1,3 @@
-# 🚀 Quickstart (Local Development)
-
-### Backend (Flask + Redis + Postgres)
-```sh
-cd compose
-docker compose --env-file .env.dev up --build
-```
-
-Reset and Rebuild
-```sh
-docker compose down -v
-docker compose --env-file .env.dev up --build
-```
-
-Visit the backend health check:  
-👉 http://localhost:8000/health
-
-### Frontend (Vite + React + TypeScript)
-```sh
-cd frontend
-npm install          # or npm ci
-npm run dev          # starts Vite dev server
-```
-
-Visit the frontend app:  
-👉 http://localhost:5173
-
-> ⚡ If running inside Docker Compose, the `frontend` container also serves at `http://localhost:5173`.
-
-Ensure `package.json` has the right scripts:
-```json
-"scripts": {
-  "dev": "vite --host --port 5173",
-  "build": "vite build",
-  "preview": "vite preview",
-  "test": "vitest",
-  "test:ci": "vitest run --coverage"
-}
-```
-
----
-
 # 🐳 Windows Docker Setup
 
 If Docker isn’t running or errors occur, use these steps:
@@ -100,6 +58,48 @@ If Docker isn’t running or errors occur, use these steps:
    docker run --rm hello-world
    docker pull redis:7
    ```
+
+---
+
+# 🚀 Quickstart (Local Development)
+
+### Backend (Flask + Redis + Postgres)
+```sh
+cd compose
+docker compose --env-file .env.dev up --build
+```
+
+Reset and Rebuild
+```sh
+docker compose down -v
+docker compose --env-file .env.dev up --build
+```
+
+Visit the backend health check:  
+👉 http://localhost:8000/health
+
+### Frontend (Vite + React + TypeScript)
+```sh
+cd frontend
+npm install          # or npm ci
+npm run dev          # starts Vite dev server
+```
+
+Visit the frontend app:  
+👉 http://localhost:5173
+
+> ⚡ If running inside Docker Compose, the `frontend` container also serves at `http://localhost:5173`.
+
+Ensure `package.json` has the right scripts:
+```json
+"scripts": {
+  "dev": "vite --host --port 5173",
+  "build": "vite build",
+  "preview": "vite preview",
+  "test": "vitest",
+  "test:ci": "vitest run --coverage"
+}
+```
 
 ---
 
