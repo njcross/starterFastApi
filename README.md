@@ -218,3 +218,74 @@ The CI/CD workflow will:
 - Push to ECR
 - Patch the Kubernetes manifests (`REPLACEME_ECR_URI` placeholders)
 - Deploy via `kubectl apply -k k8s/overlays/dev`
+
+## Database Access
+
+Our stack runs Postgres inside Docker (`db` service in `docker-compose.yml`).
+
+### Option 1: Command Line
+You can connect using `psql`:
+
+```bash
+docker compose exec db psql -U postgres -d appdb
+-U postgres → user
+
+-d appdb → database
+
+Once inside:
+
+sql
+Copy code
+\dt             -- list tables
+\d users        -- describe table "users"
+SELECT * FROM users;
+\q              -- quit
+
+## Database Access (GUI Tools)
+
+We use **PostgreSQL** for this project.  
+Since **MySQL Workbench does not support Postgres**, use one of these GUI clients:
+
+- [**DBeaver Community**](https://dbeaver.io/download/) (recommended, cross-platform, supports Postgres & many other DBs)
+- [**pgAdmin 4**](https://www.pgadmin.org/download/) (official Postgres GUI)
+
+### Connection Settings
+Use these values (from `.env.dev` or `docker-compose.yml`):
+
+- **Host:** `localhost`
+- **Port:** `5432`
+- **Database:** `appdb`
+- **User:** `postgres`
+- **Password:** `postgres`
+
+### Setup in DBeaver
+1. Install DBeaver Community Edition.
+2. Open DBeaver → **Database > New Database Connection**.
+3. Select **PostgreSQL**.
+4. Enter the following:
+   - Host: `localhost`
+   - Port: `5432`
+   - Database: `appdb`
+   - Username: `postgres`
+   - Password: `postgres`
+5. Click **Test Connection** → if successful, click **Finish**.
+6. Expand the new connection in the left sidebar to view schemas, tables, and run SQL queries.
+
+### Setup in pgAdmin
+1. Install [pgAdmin 4](https://www.pgadmin.org/download/).
+2. Open pgAdmin and click **Add New Server**.
+3. In the **General** tab, give it a name like `Local App DB`.
+4. In the **Connection** tab, enter:
+   - Host: `localhost`
+   - Port: `5432`
+   - Username: `postgres`
+   - Password: `postgres`
+5. Save → you should now see the database tree in pgAdmin.
+
+---
+
+⚡ With either tool, you can:
+- Inspect tables and schema migrations
+- Run SQL queries directly
+- Export/import data
+- Monitor active connections
