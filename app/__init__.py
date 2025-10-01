@@ -7,7 +7,11 @@ from .routes import register_routes   # ← use the aggregator in app/routes/__i
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": "*"}},
+        supports_credentials=True,  
+    )
 
     app.config["ENV_NAME"] = os.getenv("ENV", "dev")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(

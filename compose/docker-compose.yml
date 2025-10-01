@@ -58,6 +58,7 @@ services:
       - "80:80"
     environment:
       - NODE_ENV=production
+      - VITE_API_ORIGIN=http://web:8000
 
   mailhog:
     image: mailhog/mailhog:v1.0.1

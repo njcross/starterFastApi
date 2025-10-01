@@ -24,6 +24,7 @@ services:
       - FLASK_APP=app.wsgi:app
       - FLASK_ENV=development
       - PYTHONPATH=/app
+      - VITE_API_ORIGIN=http://localhost:8000
     volumes:
       - ../frontend:/app              # mount your code
     command: >

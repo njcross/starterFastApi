@@ -41,3 +41,15 @@ def test_protected_route_with_login(client, login_user):
     res = client.get("/api/protected/whoami")
     assert res.status_code == 200
     assert res.get_json()["user_id"] == user.id
+
+def test_logout_clears_session(client, app, login_user):
+    user, sid = login_user(client, "bye@example.com")
+    # sanity check: me works
+    assert client.get("/api/auth/me").get_json()["user"]["email"] == "bye@example.com"
+
+    r = client.post("/api/auth/logout")
+    assert r.status_code == 200
+
+    # cookie cleared & session gone
+    me = client.get("/api/auth/me").get_json()
+    assert me["user"] is None

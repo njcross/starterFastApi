@@ -13,6 +13,12 @@ from ..models import User
 from ..schemas.auth import EmailRequestSchema
 from ..auth.session import create_session
 from email.message import EmailMessage
+from sqlalchemy import select
+from app.auth.session import (
+    create_session,
+    get_current_user_id,
+    destroy_session
+)
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -93,6 +99,16 @@ def request_link():
 
     return jsonify({"sent": True})
 
+@bp.get("/me")
+def me():
+    uid = get_current_user_id()
+    if not uid:
+        return jsonify({"user": None}), 200
+    user = db.session.get(User, uid)
+    if not user:
+        return jsonify({"user": None}), 200
+    return jsonify({"user": {"id": user.id, "email": user.email, "role_id": user.role_id}}), 200
+
 @bp.get("/callback")
 def callback():
     token = request.args.get("token", "")
@@ -123,20 +139,14 @@ def callback():
     )
     return resp
 
-@bp.get("/me")
-def me():
-    """Optional: resolve the session cookie to the current user."""
-    secret = os.getenv("JWT_SECRET", "dev-not-secret")
-    token = request.cookies.get("session")
-    if not token:
-        return jsonify({"authenticated": False}), 200
-    try:
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
-        user = db.session.get(User, int(payload["sub"]))
-        if not user:
-            return jsonify({"authenticated": False}), 200
-        return jsonify({"authenticated": True, "email": user.email})
-    except jwt.ExpiredSignatureError:
-        return jsonify({"authenticated": False, "error": "expired"}), 200
-    except Exception:
-        return jsonify({"authenticated": False}), 200
+@bp.post("/logout")
+def logout():
+    sid = request.cookies.get("sid")
+    if sid:
+        destroy_session(sid)
+
+    resp = jsonify({"ok": True})
+    # clear cookie
+    resp.set_cookie("sid", "", expires=0, path="/")
+    return resp
+
