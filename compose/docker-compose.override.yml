@@ -21,6 +21,9 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - VITE_BACKEND_URL=http://web:8000
+      - FLASK_APP=app.wsgi:app
+      - FLASK_ENV=development
+      - PYTHONPATH=/app
     volumes:
       - ../frontend:/app              # mount your code
     command: >

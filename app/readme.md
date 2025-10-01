@@ -1,5 +1,4 @@
-Example of a new model
-
+Example of a New Model
 1) Model
 
 📂 app/models/finding.py
@@ -99,7 +98,7 @@ def delete_finding(finding_id):
     db.session.commit()
     return "", 204
 
-4) Register in your route aggregator
+4) Register in Routes
 
 📂 app/routes/__init__.py
 
@@ -113,17 +112,30 @@ def register_routes(app: Flask):
 
     app.register_blueprint(findings_bp)
 
-5) Database migration
+5) Database Migrations
 
-With Flask-Migrate set up, run (inside the container or your venv):
+With Flask-Migrate and Alembic set up, here’s how you run migrations:
 
+Local venv (no Docker)
 # ensure env var if using app factory
-export FLASK_APP="app:create_app"           # PowerShell: $env:FLASK_APP="app:create_app"
+export FLASK_APP="app:create_app"          # Bash
+# PowerShell:
+# $env:FLASK_APP="app:create_app"
+
+flask db init                              # run once to create migrations/
 flask db migrate -m "create findings"
 flask db upgrade
 
+Inside Docker Compose
 
-In Docker Compose: docker compose exec web flask db migrate -m "create findings" then docker compose exec web flask db upgrade.
+Since you’re using wsgi.py as your entrypoint:
+
+docker compose exec web flask --app wsgi db init       # run once
+docker compose exec web flask --app wsgi db migrate -m "create findings"
+docker compose exec web flask --app wsgi db upgrade
+
+
+⚠️ If you see No changes in schema detected, double-check you’ve imported your model in app/models/__init__.py and that app/__init__.py calls from . import models.
 
 6) Unit tests (SQLite in-memory; super fast)
 
