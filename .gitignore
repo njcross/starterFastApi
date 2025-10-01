@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.log
+*.pot
+*.mo
+*.db
+*.sqlite3
+.env
+.env.*
+.venv/
+venv/
+ENV/
+pip-wheel-metadata/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+celerybeat-schedule
+instance/
+
+# Flask-Migrate / Alembic
+migrations/versions/*.pyc
+migrations/*.pyc
+migrations
