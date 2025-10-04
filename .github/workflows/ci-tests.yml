@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
-      DATABASE_URL: sqlite+pysqlite:///:memory:'
+      DATABASE_URL: sqlite+pysqlite:///:memory:
       ENV_NAME: test
       REDIS_URL: redis://localhost:6379/0
       BACKEND_PUBLIC_URL: http://localhost:8000
@@ -40,9 +40,13 @@ jobs:
           if [ -f app/requirements.txt ]; then pip install -r app/requirements.txt; fi
           if [ -f app/requirements-dev.txt ]; then pip install -r app/requirements-dev.txt; fi
 
-      - name: Run pytest
+      - name: Run pytest (capture summary)
         run: |
-          pytest --cov=app --cov-report=term-missing -m "not integration"
+          set -o pipefail
+          pytest --cov=app --cov-report=term-missing -m "not integration" | tee backend-coverage.txt
+          # Optional:
+          # coverage xml -o coverage.xml
+          # coverage html -d htmlcov
 
       - name: Upload coverage (backend)
         if: always()
@@ -50,10 +54,12 @@ jobs:
         with:
           name: coverage-backend-${{ github.sha }}
           path: |
+            backend-coverage.txt
             ./.coverage
+            ./coverage.xml
             ./htmlcov/**
           if-no-files-found: ignore
-
+          
   frontend-tests:
     name: Frontend (vitest)
     runs-on: ubuntu-latest
@@ -72,10 +78,15 @@ jobs:
         run: |
           npm ci || npm install
 
-      - name: Run vitest
+      - name: Run vitest (capture summary)
         working-directory: frontend
         run: |
-          npm run test:ci
+          set -o pipefail
+          npx vitest run --coverage.enabled \
+            --coverage.reporter=text \
+            --coverage.reporter=lcov \
+            --coverage.reporter=json-summary \
+            | tee coverage/coverage-summary.txt
 
       - name: Upload coverage (frontend)
         if: always()
@@ -83,5 +94,6 @@ jobs:
         with:
           name: coverage-frontend-${{ github.sha }}
           path: |
+            frontend/coverage/coverage-summary.txt
             frontend/coverage/**
           if-no-files-found: ignore
