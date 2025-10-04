@@ -17,9 +17,14 @@ jobs:
     name: Backend (pytest)
     runs-on: ubuntu-latest
     env:
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PYTHONDONTWRITEBYTECODE: "1"
       PYTHONPATH: ${{ github.workspace }}
+      DATABASE_URL: sqlite+pysqlite:///:memory:
+      ENV_NAME: test
+      REDIS_URL: redis://localhost:6379/0
+      BACKEND_PUBLIC_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:5173
+      MAGIC_TOKEN_TTL: "900"
+      SESSION_TTL_DAYS: "1"
     steps:
       - uses: actions/checkout@v4
 
