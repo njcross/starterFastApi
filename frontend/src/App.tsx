@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import { UserProvider, useUser } from "./contexts/UserContext"
+import "./styles/global.css"
+import "./styles/nav.css"
 
 function AppContent() {
   const { currentUser, logout } = useUser();

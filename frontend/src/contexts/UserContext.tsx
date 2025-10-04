@@ -11,7 +11,7 @@ interface UserContextType {
   logout: () => Promise<void>;
 }
 
-const UserContext = createContext<UserContextType>({
+export const UserContext = createContext<UserContextType>({
   currentUser: null,
   logout: async () => {},
 });

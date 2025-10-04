@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Button from "../components/Button";
 import { api } from "../utils/api";
+import "./Home.css";
 
 export default function Home() {
   const [log, setLog] = useState<string[]>([]);

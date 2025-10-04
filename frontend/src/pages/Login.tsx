@@ -1,5 +1,6 @@
 // frontend/src/pages/Login.tsx
 import React, { useState } from "react";
+import "./Login.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
