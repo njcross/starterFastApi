@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
-      DATABASE_URL: sqlite+pysqlite:///:memory:
+      DATABASE_URL: sqlite+pysqlite:///:memory:'
       ENV_NAME: test
       REDIS_URL: redis://localhost:6379/0
       BACKEND_PUBLIC_URL: http://localhost:8000
