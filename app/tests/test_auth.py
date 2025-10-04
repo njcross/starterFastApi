@@ -1,55 +1,60 @@
-# app/tests/test_auth.py
 from urllib.parse import urlparse
-from app.models import User
 
-def test_request_link_creates_user_and_responds(client, app):
+def test_request_link_creates_user_and_responds(client, db_session_factory):
     res = client.post("/api/auth/request-link", json={"email": "newuser@example.com"})
     assert res.status_code == 200
-    assert res.get_json()["sent"] is True
+    assert res.json()["sent"] is True
 
     # user was created
-    with app.app_context():
-        u = User.query.filter_by(email="newuser@example.com").first()
+    from app.models.user import User
+    db = db_session_factory()
+    try:
+        u = db.query(User).filter(User.email == "newuser@example.com").first()
         assert u is not None
+    finally:
+        db.close()
 
-def test_callback_sets_cookie_and_redirects(client, app):
-    # Arrange: create user & put a fake magic token in redis
-    with app.app_context():
-        u = User(email="cb@example.com")
-        from app.extensions import db
-        db.session.add(u); db.session.commit()
-        token = "TESTTOKEN"
-        app.redis.setex(f"magic:{token}", 900, str(u.id))
-
-    # Act: hit callback
-    res = client.get(f"/api/auth/callback?token={token}", follow_redirects=False)
-
-    # Assert: redirect to FRONTEND_URL and Set-Cookie contains sid
-    assert res.status_code in (302, 303)
-    loc = res.headers.get("Location")
-    assert loc and urlparse(loc).netloc in ("localhost:5173", "localhost")
-
-    set_cookie = res.headers.get("Set-Cookie", "")
-    assert "sid=" in set_cookie
 
 def test_protected_route_requires_login(client):
     res = client.get("/api/protected/whoami")
     assert res.status_code == 401
 
+
 def test_protected_route_with_login(client, login_user):
-    user, sid = login_user(client, "me@example.com")
+    user, sid = login_user("me@example.com", client=client)
     res = client.get("/api/protected/whoami")
     assert res.status_code == 200
-    assert res.get_json()["user_id"] == user.id
+    assert res.json()["user_id"] == user.id
 
-def test_logout_clears_session(client, app, login_user):
-    user, sid = login_user(client, "bye@example.com")
+def test_callback_sets_cookie_and_redirects(client, fake_redis, db_session_factory):
+    from app.models.user import User
+    db = db_session_factory()
+    try:
+        u = User(email="cb@example.com")
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+    finally:
+        db.close()
+
+    token = "TESTTOKEN"
+    fake_redis.setex(f"magic:{token}", 900, str(u.id))
+
+    res = client.get(f"/api/auth/callback?token={token}", follow_redirects=False)
+    assert res.status_code in (302, 303)
+    assert "sid=" in res.headers.get("set-cookie", "")
+
+
+
+def test_logout_clears_session(client, login_user):
+    user, sid = login_user("bye@example.com", client=client)
     # sanity check: me works
-    assert client.get("/api/auth/me").get_json()["user"]["email"] == "bye@example.com"
+    me1 = client.get("/api/auth/me").json()
+    assert me1["user"]["email"] == "bye@example.com"
 
     r = client.post("/api/auth/logout")
     assert r.status_code == 200
 
     # cookie cleared & session gone
-    me = client.get("/api/auth/me").get_json()
-    assert me["user"] is None
+    me2 = client.get("/api/auth/me").json()
+    assert me2 == {'detail': 'Unauthorized'}

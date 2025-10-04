@@ -6,26 +6,22 @@ services:
       - ../app:/app:cached
       # mount gunicorn config to a path NOT under /app, so it won't be shadowed
       - ../docker/gunicorn_conf.py:/etc/gunicorn/gunicorn_conf.py:ro
-    command: >
-      sh -c "gunicorn app.wsgi:app -c /etc/gunicorn/gunicorn_conf.py --reload --reload-engine=poll"
+    env_file:
+      - ./.env.dev
+    command: ["/usr/local/bin/entrypoint.sh"]
   frontend:
     build:
       context: ..
       dockerfile: docker/frontend.dev.Dockerfile
     image: yourapp/frontend:${TAG:-dev}
-    depends_on:
-      - web
     ports:
       - "5173:5173"
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      - VITE_API_ORIGIN=http://localhost:5173
       - VITE_BACKEND_URL=http://web:8000
-      - FLASK_APP=app.wsgi:app
-      - FLASK_ENV=development
-      - PYTHONPATH=/app
-      - VITE_API_ORIGIN=http://localhost:8000
     volumes:
-      - ../frontend:/app              # mount your code
+      - ../frontend:/app
     command: >
       sh -c "npm install --include=dev && npm run dev -- --host --port 5173"

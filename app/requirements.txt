@@ -1,17 +1,18 @@
-Flask
-Flask-SQLAlchemy
-Flask-Migrate
-Flask-Marshmallow
-marshmallow
-marshmallow-sqlalchemy
-psycopg2-binary          # Stable Postgres driver (keep this for now)
-# psycopg[binary]>=3.2.2,<3.3  # Uncomment if migrating to Psycopg3
+fastapi==0.115.4
+uvicorn==0.30.6
+gunicorn==23.0.0
 
-gunicorn
-redis>=5,<6
+SQLAlchemy==2.0.35
+psycopg[binary]==3.2.10
+
+redis==5.0.8
+pydantic==2.9.2
+pydantic-settings==2.5.2
+email-validator==2.2.0
+
+PyJWT==2.9.0
 alembic==1.13.2
-python-dotenv==1.0.1
-Flask-Cors==4.0.1
-PyJWT>=2.9
+
 email-validator>=2.2
 fakeredis==2.23.3
+httpx==0.24.0

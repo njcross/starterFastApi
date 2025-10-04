@@ -1,12 +1,9 @@
-from marshmallow import Schema, fields, validates, ValidationError
-from email_validator import validate_email as ve, EmailNotValidError
+from pydantic import BaseModel, EmailStr
 
-class EmailRequestSchema(Schema):
-    email = fields.String(required=True)
+class EmailRequest(BaseModel):
+    email: EmailStr
 
-    @validates("email")
-    def validate_email(self, value, **kwargs):   # ← accept **kwargs for Marshmallow 4
-        try:
-            ve(value, check_deliverability=False)
-        except EmailNotValidError as e:
-            raise ValidationError(str(e))
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    role_id: int | None = None

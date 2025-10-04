@@ -1,11 +1,12 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_marshmallow import Marshmallow
-from flask_migrate import Migrate
-import redis
+# app/extensions.py
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from redis import Redis
+from .core.config import settings
 
-db = SQLAlchemy()
-ma = Marshmallow()
-migrate = Migrate()
+# --- SQLAlchemy setup ---
+engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, future=True)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def init_redis(app):
-    return redis.from_url(app.config["REDIS_URL"], decode_responses=True)
+# --- Redis setup ---
+redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=True)

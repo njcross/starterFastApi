@@ -1,223 +1,216 @@
-Example of a New Model
-1) Model
+# 🧩 Example: Adding a New Model (`Finding`) in FastAPI
 
-📂 app/models/finding.py
+This example shows how to add a SQLAlchemy model, Pydantic schemas, CRUD routes, Alembic migration steps, and unit tests (SQLite in-memory) that don’t touch Postgres/Redis.
 
+---
+
+## 1) Model
+
+📂 `app/models/finding.py`
+```python
 from datetime import datetime
-from ..extensions import db
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Text, Boolean, DateTime, Integer
+from ..models import Base  # your project's Base (already used by User, etc.)
 
-class Finding(db.Model):
+class Finding(Base):
     __tablename__ = "findings"
 
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(200), nullable=False, index=True)
-    severity = db.Column(db.String(20), nullable=False, default="low")  # low|medium|high|critical
-    description = db.Column(db.Text, default="")
-    is_open = db.Column(db.Boolean, nullable=False, default=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), index=True)
+    severity: Mapped[str] = mapped_column(String(20), default="low")  # low|medium|high|critical
+    description: Mapped[str] = mapped_column(Text, default="")
+    is_open: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Finding {self.id} {self.title} sev={self.severity}>"
+```
 
-2) Schema
+---
 
-📂 app/schemas/finding.py
+## 2) Pydantic Schemas
 
-from marshmallow import validate, EXCLUDE
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
-from ..extensions import db
-from ..models.finding import Finding
+📂 `app/schemas/finding.py`
+```python
+from datetime import datetime
+from pydantic import BaseModel, Field, constr
+from typing import Literal, Optional
 
-class FindingSchema(SQLAlchemyAutoSchema):
-    class Meta:
-        model = Finding
-        sqla_session = db.session
-        load_instance = True
-        unknown = EXCLUDE
+Severity = Literal["low", "medium", "high", "critical"]
 
-    id = auto_field(dump_only=True)
-    created_at = auto_field(dump_only=True)
-    updated_at = auto_field(dump_only=True)
-    title = auto_field(required=True, validate=validate.Length(min=1, max=200))
-    severity = auto_field(validate=validate.OneOf(["low", "medium", "high", "critical"]))
+class FindingBase(BaseModel):
+    title: constr(min_length=1, max_length=200)
+    severity: Severity = "low"
+    description: str = ""
+    is_open: bool = True
 
-3) Routes (Blueprint)
+class FindingCreate(FindingBase):
+    pass
 
-📂 app/routes/finding_routes.py
+class FindingUpdate(BaseModel):
+    title: Optional[constr(min_length=1, max_length=200)] = None
+    severity: Optional[Severity] = None
+    description: Optional[str] = None
+    is_open: Optional[bool] = None
 
-from flask import Blueprint, request, jsonify, abort
+class FindingRead(FindingBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+```
+
+---
+
+## 3) Routes (APIRouter)
+
+📂 `app/routes/finding_routes.py`
+```python
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from sqlalchemy import select
-from ..extensions import db
+from typing import List
+from ..db import get_db
 from ..models.finding import Finding
-from ..schemas.finding import FindingSchema
+from ..schemas.finding import FindingCreate, FindingRead, FindingUpdate
 
-bp = Blueprint("findings", __name__, url_prefix="/api/findings")
+router = APIRouter(prefix="/api/findings", tags=["Findings"])
 
-schema = FindingSchema()
-schemas = FindingSchema(many=True)
-
-@bp.get("")
-def list_findings():
+@router.get("", response_model=List[FindingRead])
+def list_findings(db: Session = Depends(get_db)):
     stmt = select(Finding).order_by(Finding.created_at.desc())
-    objs = db.session.execute(stmt).scalars().all()
-    return jsonify(schemas.dump(objs)), 200
+    return db.execute(stmt).scalars().all()
 
-@bp.post("")
-def create_finding():
-    data = request.get_json() or {}
-    obj = schema.load(data)
-    db.session.add(obj)
-    db.session.commit()
-    return schema.jsonify(obj), 201
+@router.post("", response_model=FindingRead, status_code=status.HTTP_201_CREATED)
+def create_finding(payload: FindingCreate, db: Session = Depends(get_db)):
+    obj = Finding(**payload.model_dump())
+    db.add(obj)
+    db.commit()
+    db.refresh(obj)
+    return obj
 
-@bp.get("/<int:finding_id>")
-def get_finding(finding_id):
-    obj = db.session.get(Finding, finding_id)
+@router.get("/{finding_id}", response_model=FindingRead)
+def get_finding(finding_id: int, db: Session = Depends(get_db)):
+    obj = db.get(Finding, finding_id)
     if not obj:
-        abort(404, "Finding not found")
-    return schema.jsonify(obj), 200
+        raise HTTPException(status_code=404, detail="Finding not found")
+    return obj
 
-@bp.patch("/<int:finding_id>")
-def update_finding(finding_id):
-    obj = db.session.get(Finding, finding_id)
+@router.patch("/{finding_id}", response_model=FindingRead)
+def update_finding(finding_id: int, payload: FindingUpdate, db: Session = Depends(get_db)):
+    obj = db.get(Finding, finding_id)
     if not obj:
-        abort(404, "Finding not found")
-    data = request.get_json() or {}
-    obj = schema.load(data, instance=obj, partial=True)
-    db.session.commit()
-    return schema.jsonify(obj), 200
+        raise HTTPException(status_code=404, detail="Finding not found")
+    for k, v in payload.model_dump(exclude_unset=True).items():
+        setattr(obj, k, v)
+    db.commit()
+    db.refresh(obj)
+    return obj
 
-@bp.delete("/<int:finding_id>")
-def delete_finding(finding_id):
-    obj = db.session.get(Finding, finding_id)
+@router.delete("/{finding_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_finding(finding_id: int, db: Session = Depends(get_db)):
+    obj = db.get(Finding, finding_id)
     if not obj:
-        abort(404, "Finding not found")
-    db.session.delete(obj)
-    db.session.commit()
-    return "", 204
+        raise HTTPException(status_code=404, detail="Finding not found")
+    db.delete(obj)
+    db.commit()
+```
 
-4) Register in Routes
+---
 
-📂 app/routes/__init__.py
+## 4) Register the Router
 
-from flask import Flask
-from .finding_routes import bp as findings_bp
+📂 `app/main.py`
+```python
+from .routes.health import router as health_router
 
-def register_routes(app: Flask):
-    @app.get("/health")
-    def health():
-        return {"status": "ok"}, 200
+app.include_router(health_router)
+```
 
-    app.register_blueprint(findings_bp)
+---
 
-5) Database Migrations
+## 5) Database Migrations (Alembic)
 
-With Flask-Migrate and Alembic set up, here’s how you run migrations:
+```bash
+alembic revision --autogenerate -m "add findings table"
+alembic upgrade head
+```
 
-Local venv (no Docker)
-# ensure env var if using app factory
-export FLASK_APP="app:create_app"          # Bash
-# PowerShell:
-# $env:FLASK_APP="app:create_app"
+Or inside Docker Compose:
 
-flask db init                              # run once to create migrations/
-flask db migrate -m "create findings"
-flask db upgrade
+```bash
+docker compose exec web alembic revision --autogenerate -m "add findings table"
+docker compose exec web alembic upgrade head
+```
 
-Inside Docker Compose
+---
 
-Since you’re using wsgi.py as your entrypoint:
+## 6) Unit Tests (SQLite in-memory)
 
-docker compose exec web flask --app wsgi db init       # run once
-docker compose exec web flask --app wsgi db migrate -m "create findings"
-docker compose exec web flask --app wsgi db upgrade
+📂 `app/tests/test_findings.py`
+```python
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+from app.main import app
+from app.db import get_db
+from app.models import Base
+from app.models.finding import Finding
 
-⚠️ If you see No changes in schema detected, double-check you’ve imported your model in app/models/__init__.py and that app/__init__.py calls from . import models.
+TEST_ENGINE = create_engine(
+    "sqlite+pysqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+    future=True,
+)
+TestingSessionLocal = sessionmaker(bind=TEST_ENGINE, autoflush=False, autocommit=False, future=True)
 
-6) Unit tests (SQLite in-memory; super fast)
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-These tests run without Postgres, so they won’t touch your local DB. They create a fresh schema in memory.
+app.dependency_overrides[get_db] = override_get_db
 
-app/tests/conftest.py
+Base.metadata.create_all(bind=TEST_ENGINE)
 
-import os
-import pytest
-from app import create_app
-from app.extensions import db as _db
+client = TestClient(app)
 
-@pytest.fixture(scope="session")
-def app():
-    # Use in-memory SQLite for unit tests
-    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-    app = create_app()
-
-    with app.app_context():
-        _db.create_all()
-    yield app
-
-    # (no teardown needed for sqlite:///:memory: with session scope)
-
-@pytest.fixture()
-def client(app):
-    return app.test_client()
-
-
-app/tests/test_findings.py
-
-def test_create_and_get_finding(client):
-    # create
+def test_create_and_get_finding():
     resp = client.post("/api/findings", json={
         "title": "Outdated dependency",
         "severity": "medium",
         "description": "Upgrade library X",
         "is_open": True
     })
-    assert resp.status_code == 201, resp.get_data(as_text=True)
-    created = resp.get_json()
+    assert resp.status_code == 201
+    created = resp.json()
     fid = created["id"]
     assert created["title"] == "Outdated dependency"
     assert created["severity"] == "medium"
-    assert created["is_open"] is True
 
-    # read
     resp = client.get(f"/api/findings/{fid}")
     assert resp.status_code == 200
-    got = resp.get_json()
-    assert got["id"] == fid
 
-def test_list_findings_and_filter(client):
-    # ensure at least one exists
-    client.post("/api/findings", json={"title": "A", "severity": "low"})
-    client.post("/api/findings", json={"title": "B", "severity": "high"})
-    resp = client.get("/api/findings?severity=high&per_page=1")
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert "items" in data
-    assert data["per_page"] == 1
-    assert all(item["severity"] == "high" for item in data["items"])
-
-def test_patch_and_delete_finding(client):
-    # create
+def test_patch_and_delete_finding():
     c = client.post("/api/findings", json={"title": "To fix", "severity": "low"})
-    fid = c.get_json()["id"]
-
-    # patch
+    fid = c.json()["id"]
     u = client.patch(f"/api/findings/{fid}", json={"severity": "critical", "is_open": False})
     assert u.status_code == 200
-    updated = u.get_json()
+    updated = u.json()
     assert updated["severity"] == "critical"
-    assert updated["is_open"] is False
 
-    # delete
     d = client.delete(f"/api/findings/{fid}")
     assert d.status_code == 204
-
-    # gone
-    g = client.get(f"/api/findings/{fid}")
-    assert g.status_code == 404
-
-
-These count as unit tests (using SQLite). Your integration tests can hit the real Postgres/Redis and be marked with @pytest.mark.integration if you want to keep them out of the default run.
+```

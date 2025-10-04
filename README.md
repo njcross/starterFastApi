@@ -76,7 +76,7 @@ docker compose --env-file .env.dev up --build
 ```
 
 Visit the backend health check:  
-👉 http://localhost:8000/health
+👉 http://localhost:5173/api/health
 
 ### Frontend (Vite + React + TypeScript)
 ```sh
@@ -162,63 +162,6 @@ npm install -D @vitest/coverage-v8
 
 ---
 
-# ☁️ Build & Push to AWS ECR
-
-Both **backend** and **frontend** images can be built and pushed:
-
-```sh
-# backend
-docker build -f docker/web.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev .
-docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev
-
-# frontend
-docker build -f docker/frontend.dev.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev .
-docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev
-```
-
-Or use `make` targets if defined:
-```sh
-make docker-build docker-push
-```
-
----
-
-# 🚢 Deploy to AWS EKS
-
-After EKS and IAM are set up:
-
-```sh
-kubectl apply -k k8s/overlays/dev
-```
-
-This applies both `web` and `frontend` Deployments/Services/Ingress.
-
-- Backend is exposed at `/api/*`
-- Frontend is served at `/` through the ALB Ingress
-
----
-
-# 🔄 GitHub Actions CI/CD
-
-In **GitHub → Settings → Secrets and variables**:
-
-### Variables
-- `AWS_REGION`
-- `AWS_ACCOUNT_ID`
-- `ECR_REPOSITORY_WEB` (e.g., `yourapp-web`)
-- `ECR_REPOSITORY_FRONTEND` (e.g., `yourapp-frontend`)
-- `EKS_CLUSTER_NAME`
-- `K8S_NAMESPACE` (e.g., `yourapp`)
-
-### Secrets
-- `AWS_ROLE_TO_ASSUME` (IAM role with OIDC trust)
-
-The CI/CD workflow will:
-- Build Docker images for **web** and **frontend**
-- Push to ECR
-- Patch the Kubernetes manifests (`REPLACEME_ECR_URI` placeholders)
-- Deploy via `kubectl apply -k k8s/overlays/dev`
-
 ## Database Access
 
 Our stack runs Postgres inside Docker (`db` service in `docker-compose.yml`).
@@ -289,3 +232,61 @@ Use these values (from `.env.dev` or `docker-compose.yml`):
 - Run SQL queries directly
 - Export/import data
 - Monitor active connections
+
+
+# ☁️ Build & Push to AWS ECR
+
+Both **backend** and **frontend** images can be built and pushed:
+
+```sh
+# backend
+docker build -f docker/web.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev .
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-web:dev
+
+# frontend
+docker build -f docker/frontend.dev.Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev .
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/yourapp-frontend:dev
+```
+
+Or use `make` targets if defined:
+```sh
+make docker-build docker-push
+```
+
+---
+
+# 🚢 Deploy to AWS EKS
+
+After EKS and IAM are set up:
+
+```sh
+kubectl apply -k k8s/overlays/dev
+```
+
+This applies both `web` and `frontend` Deployments/Services/Ingress.
+
+- Backend is exposed at `/api/*`
+- Frontend is served at `/` through the ALB Ingress
+
+---
+
+# 🔄 GitHub Actions CI/CD
+
+In **GitHub → Settings → Secrets and variables**:
+
+### Variables
+- `AWS_REGION`
+- `AWS_ACCOUNT_ID`
+- `ECR_REPOSITORY_WEB` (e.g., `yourapp-web`)
+- `ECR_REPOSITORY_FRONTEND` (e.g., `yourapp-frontend`)
+- `EKS_CLUSTER_NAME`
+- `K8S_NAMESPACE` (e.g., `yourapp`)
+
+### Secrets
+- `AWS_ROLE_TO_ASSUME` (IAM role with OIDC trust)
+
+The CI/CD workflow will:
+- Build Docker images for **web** and **frontend**
+- Push to ECR
+- Patch the Kubernetes manifests (`REPLACEME_ECR_URI` placeholders)
+- Deploy via `kubectl apply -k k8s/overlays/dev`
