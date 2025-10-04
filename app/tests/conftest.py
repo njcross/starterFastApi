@@ -1,4 +1,17 @@
-import os
+import os, sys
+
+# Make sure Python can import the repo package
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+# Force lightweight, driverless DB for unit tests
+os.environ.setdefault("ENV_NAME", "test")
+os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("BACKEND_PUBLIC_URL", "http://localhost:8000")
+os.environ.setdefault("FRONTEND_URL", "http://localhost:5173")
+os.environ.setdefault("MAGIC_TOKEN_TTL", "900")
+os.environ.setdefault("SESSION_TTL_DAYS", "1")
+
 import pytest
 import fakeredis
 
