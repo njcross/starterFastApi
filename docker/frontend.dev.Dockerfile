@@ -1,3 +1,4 @@
+# dev frontend.Dockerfile
 FROM node:22-alpine
 WORKDIR /app
 
@@ -8,8 +9,12 @@ ENV NODE_ENV=development
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci || npm install --include=dev
 
-# Copy only the parts we need at build (so node_modules is baked into image)
-COPY frontend ./
-
+# Do NOT copy the whole src here for dev; we'll mount it at runtime
+# Keeps node_modules inside the container for reliability/perf
 EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "--port", "5173"]
+
+# Helpful for file watching on Docker Desktop (macOS/Windows)
+ENV CHOKIDAR_USEPOLLING=1
+ENV WATCHPACK_POLLING=true
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
