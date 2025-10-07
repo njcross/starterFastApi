@@ -290,3 +290,104 @@ The CI/CD workflow will:
 - Push to ECR
 - Patch the Kubernetes manifests (`REPLACEME_ECR_URI` placeholders)
 - Deploy via `kubectl apply -k k8s/overlays/dev`
+
+# System Architecture Diagrams
+
+Below are two Mermaid diagrams that describe the architecture of the project in **Local (Docker Compose)** and **AWS (EKS)** environments.
+
+---
+
+## 1) Local Development — Docker Compose
+
+```mermaid
+flowchart LR
+  %% Nodes
+  U[(User)]
+  subgraph Dev["Local Dev (Docker Compose)"]
+    FE["Frontend (Vite/React)\nlocalhost:5173"]
+    BE["Backend (FastAPI/Gunicorn)\nlocalhost:8000"]
+    DB[(Postgres 15)]
+    REDIS[(Redis 7)]
+    MH["MailHog\nSMTP:1025 / UI:8025"]
+  end
+  %% Proxies
+  FE -- "/api/* (proxy)" --> BE;
+  %% App data flow
+  BE <--> DB;
+  BE <--> REDIS;
+  %% Auth flow
+  U -. "requests magic link" .-> BE;
+  BE -->|send_email| MH;
+  MH -. "delivers link" .-> U;
+  U -. "clicks callback" .-> BE;
+  BE -->|set sid cookie| U;
+  %% Health / utilities
+  U -->|"/api/health"| BE;
+  %% Browser to frontend
+  U -->|HTTPS| FE;
+```
+
+**Notes**
+- Frontend uses Vite dev server in development (or an Nginx-based container in production).
+- Frontend proxies `/api/*` to backend (`web:8000`).
+- Backend uses SQLAlchemy → Postgres, Redis for sessions, Mailhog as local SMTP.
+- Auth flow: request-link → email → callback → set secure `sid` cookie in browser.
+
+---
+
+## 2) Cloud — AWS EKS (Production)
+
+```mermaid
+flowchart TB
+    user((User))
+    r53[Route53 DNS]
+    alb[ALB HTTP/HTTPS]
+    ig[Ingress K8s]
+    subgraph eks[EKS Cluster]
+        subgraph ns[Namespace: yourapp]
+            feSvc[SVC: frontend]
+            beSvc[SVC: web FastAPI]
+            feDep[DEPLOYMENT: frontend]
+            beDep[DEPLOYMENT: web]
+        end
+    end
+    ecr[(ECR - Container Registry)]
+    gha[GitHub Actions CI/CD]
+    rds[(Amazon RDS - Postgres)]
+    elasticache[(ElastiCache - Redis)]
+    ses[(AWS SES - SMTP)]
+    %% User traffic
+    user --> r53 --> alb --> ig
+    ig --> feSvc
+    ig --> beSvc
+    %% Services to Deployments
+    feSvc --> feDep
+    beSvc --> beDep
+    %% App dependencies
+    beDep <--> rds
+    beDep <--> elasticache
+    beDep --> ses
+    %% CI/CD & Images
+    gha -->|build & push images| ecr
+    ecr -->|pull images| feDep
+    ecr -->|pull images| beDep
+```
+
+**Notes**
+- Download mermaid extension on VS code to edit diagram
+- ALB terminates TLS (ACM certificate) and routes traffic to the Kubernetes Ingress.
+- Ingress routes `/` to `frontend` service and `/api/*` to `web` service.
+- Backend talks to RDS (Postgres) and ElastiCache (Redis). Emails via SES.
+- CI/CD: GitHub Actions builds/pushes to ECR and deploys to EKS.
+
+---
+
+## Legend
+
+- **FE** = Frontend (React + Vite).  
+- **BE** = Backend (FastAPI with Gunicorn/Uvicorn).  
+- **Redis** stores sessions (`sid`).  
+- **Postgres** stores app data (users, etc.).  
+- **Mailhog / SES** handles outgoing emails (magic link).  
+- **ALB + ACM** terminate TLS in AWS; Ingress routes to services.
+
