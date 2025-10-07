@@ -19,9 +19,11 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
       - VITE_API_ORIGIN=http://localhost:5173
       - VITE_BACKEND_URL=http://web:8000
     volumes:
       - ../frontend:/app
+      - /app/node_modules
     command: >
       sh -c "npm install --include=dev && npm run dev -- --host --port 5173"
