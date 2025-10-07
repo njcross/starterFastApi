@@ -11,7 +11,7 @@ def test_callback_invalid_token_returns_400(monkeypatch):
     try:
         res = TestClient(app).get("/api/auth/callback?token=doesnotexist")
         assert res.status_code == 400
-        assert {'error': 'invalid or expired token'} == res.json()
+        assert {'detail': 'invalid or expired token'} == res.json()
     finally:
         app.dependency_overrides.pop(get_redis, None)
 
