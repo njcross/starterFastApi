@@ -78,6 +78,29 @@ docker compose --env-file .env.dev up --build
 Visit the backend health check:  
 👉 http://localhost:5173/api/health
 
+---
+
+### 🧭 API Documentation (Swagger & ReDoc)
+
+Once your backend container is running, **FastAPI** automatically provides interactive API documentation at these endpoints:
+
+- **Swagger UI:**  
+  👉 [http://localhost:8000/docs](http://localhost:8000/docs)
+
+- **ReDoc:**  
+  👉 [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+These docs let you:
+- Browse all backend routes (auth, CRUD, etc.)  
+- View request/response models and example payloads  
+- Try live API calls right from your browser using your running backend  
+
+If you’re running via Docker Compose, ensure the `web` service is running and port **8000** is exposed.  
+If deployed to AWS, you’ll find the same docs at:  
+👉 `https://<your-domain>/api/docs` and `https://<your-domain>/api/redoc`
+
+---
+
 ### Frontend (Vite + React + TypeScript)
 ```sh
 cd frontend
