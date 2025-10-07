@@ -44,11 +44,20 @@ jobs:
         run: |
           set -o pipefail
           pytest --cov=app --cov-report=term-missing -m "not integration" | tee backend-coverage.txt
-          # Optional:
-          # coverage xml -o coverage.xml
-          # coverage html -d htmlcov
+          coverage xml -o coverage.xml || true
+          coverage html -d htmlcov || true
 
-      - name: Upload coverage (backend)
+      - name: Append backend summary to job summary
+        if: always()
+        run: |
+          echo "## 🐍 Backend Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Terminal report" >> $GITHUB_STEP_SUMMARY
+          echo '```text' >> $GITHUB_STEP_SUMMARY
+          tail -n 200 backend-coverage.txt >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload backend coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -73,27 +82,81 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install deps
+      - name: Install deps (ensure coverage provider)
         working-directory: frontend
         run: |
           npm ci || npm install
+          npm i -D @vitest/coverage-v8
 
-      - name: Run vitest (capture summary)
+      - name: Run vitest (text + json-summary + html)
         working-directory: frontend
         run: |
           set -o pipefail
-          npx vitest run --coverage.enabled \
+          npx vitest run \
+            --coverage.enabled \
+            --coverage.provider=v8 \
+            --coverage.all=true \
+            --coverage.include='src/**/*.{js,jsx,ts,tsx}' \
             --coverage.reporter=text \
-            --coverage.reporter=lcov \
             --coverage.reporter=json-summary \
-            | tee coverage/coverage-summary.txt
+            --coverage.reporter=html \
+            | tee coverage/terminal.txt
+      - name: Append frontend coverage (HTML table) to job summary
+        if: always()
+        working-directory: frontend
+        run: |
+          set -e
+          HTML_FILE="coverage/index.html"
+          OUT_FRAGMENT="coverage/summary-fragment.html"
 
-      - name: Upload coverage (frontend)
+          if [ ! -f "$HTML_FILE" ]; then
+            echo "coverage/index.html not found"
+            exit 0
+          fi
+
+          # Node script: extract the coverage summary table (no external deps)
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'coverage/index.html';
+          const html = fs.readFileSync(path, 'utf8');
+
+          // Try to capture the main coverage table with class "coverage-summary"
+          const tableRe = /<table[^>]*class=["'][^"']*coverage-summary[^"']*["'][^>]*>[\s\S]*?<\/table>/i;
+          const anyTableRe = /<table[^>]*>[\s\S]*?<\/table>/i;
+
+          let match = html.match(tableRe);
+          if (!match) match = html.match(anyTableRe);
+
+          const fragment = match ? match[0] : '<p><em>No coverage table found in coverage/index.html</em></p>';
+          fs.writeFileSync('coverage/summary-fragment.html', fragment, 'utf8');
+          NODE
+
+          echo "## ⚛️ Frontend Coverage (HTML table)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary>Open coverage table</summary>" >> $GITHUB_STEP_SUMMARY
+          # Inject a minimal note so it looks OK without CSS
+          echo '<p><em>Note:</em> Styles and JS are stripped in GitHub summaries; this is a plain HTML table.</p>' >> $GITHUB_STEP_SUMMARY
+          cat "$OUT_FRAGMENT" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e "const s=require('./coverage/coverage-summary.json').total; \
+              const row=(k)=>\`| \${k} | \${s[k].pct}% | \${s[k].covered}/\${s[k].total} |\`; \
+              console.log('### Totals'); \
+              console.log('| Metric | % | Covered/Total |'); \
+              console.log('|---|---:|---:|'); \
+              console.log(row('lines')); \
+              console.log(row('branches')); \
+              console.log(row('functions')); \
+              console.log(row('statements'));" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload frontend coverage artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-frontend-${{ github.sha }}
           path: |
-            frontend/coverage/coverage-summary.txt
+            frontend/coverage/terminal.txt
+            frontend/coverage/coverage-summary.json
             frontend/coverage/**
           if-no-files-found: ignore
