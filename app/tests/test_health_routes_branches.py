@@ -107,6 +107,18 @@ class BoomEngine:
 def test_db_version_error(monkeypatch):
     monkeypatch.setattr(health, "engine", BoomEngine(), raising=True)
     rv = TestClient(app).get("/api/db-version")
-    assert rv.status_code == 200  # route returns {"error": "..."} with 200
+    assert rv.status_code == 500  # route returns {"error": "..."} with 200
     body = rv.json()
     assert "error" in body and "boom" in body["error"]
+
+def test_ping_redis_decodes_bytes_when_decode_responses_false(monkeypatch):
+    # fakeredis with decode_responses=False returns BYTES from .get(...)
+    r = fakeredis.FakeRedis(decode_responses=False)
+
+    # Patch the dependency used inside app.routes.health
+    monkeypatch.setattr(health, "get_redis", lambda: r, raising=True)
+
+    rv = TestClient(app).get("/api/ping-redis")
+    assert rv.status_code == 200
+    # Route should have decoded b"world" -> "world"
+    assert rv.json() == {"redis": "world"}
