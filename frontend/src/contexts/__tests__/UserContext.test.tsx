@@ -1,8 +1,10 @@
 // src/contexts/__tests__/UserContext.test.tsx
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, test } from "vitest";
 import React from "react";
 import { UserProvider, useUser } from "../UserContext";
+import { useEffect } from "react";
+
 
 const TestConsumer = () => {
   const { currentUser, logout } = useUser();
@@ -85,4 +87,16 @@ describe("UserContext", () => {
       credentials: "include",
     });
   });
+});
+
+const BareConsumer = () => {
+  const { logout } = useUser(); // uses context default (no Provider)
+  useEffect(() => { void logout(); }, []);
+  return null;
+};
+
+test("default context logout noop is callable without provider", () => {
+  // no provider on purpose
+  render(<BareConsumer />);
+  // if it didn't throw, the default async () => {} was executed and covered
 });
