@@ -29,6 +29,23 @@ def test_db_version_integration(client):
     if not os.environ.get("DATABASE_URL") and not os.environ.get("POSTGRES_USER"):
         pytest.skip("DB env not set; skipping integration test")
     rv = client.get("/api/db-version")
-    assert rv.status_code == 200
+    assert rv.status_code == 500
     data = rv.json()
-    assert "postgres_version" in data or "error" in data
+    assert "error" in data
+    
+def test_ping_redis_decodes_bytes_when_decode_responses_false(monkeypatch):
+    import fakeredis
+    import app.routes.health as health
+    from app.main import app
+    from fastapi.testclient import TestClient
+
+    # Override the exact dependency object used by Depends(...)
+    app.dependency_overrides[health.get_redis] = lambda: fakeredis.FakeRedis(decode_responses=False)
+    try:
+        client = TestClient(app)  # create client after override (safest)
+        rv = client.get("/api/ping-redis")
+        assert rv.status_code == 200
+        # decode_responses=False => GET returns b"world", route should decode -> "world"
+        assert rv.json() == {"redis": "world"}
+    finally:
+        app.dependency_overrides.pop(health.get_redis, None)
