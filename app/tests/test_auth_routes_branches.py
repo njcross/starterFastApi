@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.core.redis_client import get_redis
 from app.db import get_db
+from app.auth.deps import current_user_id
+from app.models import User
 
 def test_callback_invalid_token_returns_400(monkeypatch):
     app.dependency_overrides[get_redis] = lambda: fakeredis.FakeRedis(decode_responses=True)
@@ -54,3 +56,24 @@ def test_me_returns_none_when_no_user_id(monkeypatch):
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_redis, None)
+
+class FakeSession:
+    def get(self, model, pk):
+        assert model is User
+        return None  # simulate "user was deleted / not found"
+
+def _fake_db():
+    yield FakeSession()
+
+def test_me_branch_user_not_found():
+    # Override deps to hit the branch inside `me`
+    app.dependency_overrides[current_user_id] = lambda: 999
+    app.dependency_overrides[get_db] = _fake_db
+    try:
+        client = TestClient(app)
+        resp = client.get("/api/auth/me")
+        assert resp.status_code == 200
+        assert resp.json() == {"user": None}
+    finally:
+        app.dependency_overrides.pop(current_user_id, None)
+        app.dependency_overrides.pop(get_db, None)
